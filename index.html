@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Noticias PWA</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563EB">
+    <link rel="apple-touch-icon" href="icons/icon.png">
+</head>
+<body>
+
+    <header class="app-bar">
+        <div class="logo">📰 NewsApp</div>
+        <button class="icon-btn">🔔</button>
+    </header>
+
+    <main class="container">
+        <div id="skeleton">
+            <div class="card skeleton-card">
+                <div class="skeleton-img"></div>
+                <div class="skeleton-line title"></div>
+                <div class="skeleton-line text"></div>
+                <div class="skeleton-line text short"></div>
+            </div>
+            <div class="card skeleton-card">
+                <div class="skeleton-img"></div>
+                <div class="skeleton-line title"></div>
+                <div class="skeleton-line text"></div>
+            </div>
+        </div>
+
+        <div id="content" class="hidden"></div>
+    </main>
+
+    <nav class="bottom-nav">
+        <a href="#" class="nav-item active">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-label">Inicio</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="nav-icon">🔥</span>
+            <span class="nav-label">Top</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="nav-icon">👤</span>
+            <span class="nav-label">Perfil</span>
+        </a>
+    </nav>
+
+    <script src="app.js"></script>
+</body>
+</html>

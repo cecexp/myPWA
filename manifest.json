@@ -1,0 +1,16 @@
+{
+  "name": "Noticias PWA Prototipo",
+  "short_name": "Noticias",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#317EFB",
+  "icons": [
+    {
+      "src": "icons/icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
+
