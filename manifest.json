@@ -1,16 +1,22 @@
 {
-  "name": "Noticias PWA Prototipo",
-  "short_name": "Noticias",
+  "name": "Mad Beans – Manage the Madness",
+  "short_name": "Mad Beans",
+  "description": "A 4-player co-op roguelike cooking game. Complete orders, survive the chaos.",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#317EFB",
+  "orientation": "landscape",
+  "background_color": "#0a0c1a",
+  "theme_color": "#00e5ff",
   "icons": [
     {
-      "src": "icons/icon.png",
+      "src": "icons/icon-192.png",
       "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
       "type": "image/png"
     }
   ]
 }
-
