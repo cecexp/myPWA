@@ -7,7 +7,9 @@ const ASSETS_TO_CACHE = [
   '/app.js',
   '/manifest.json',
   '/icons/icon-192.png',
-  '/icons/icon-512.png'
+  '/icons/icon-512.png',
+  // Three.js from CDN — cached for offline 3D beans
+  'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
 ];
 
 // 1. INSTALL: Cache the App Shell
@@ -19,6 +21,8 @@ self.addEventListener('install', event => {
         return cache.addAll(ASSETS_TO_CACHE);
       })
   );
+  // Activate immediately without waiting
+  self.skipWaiting();
 });
 
 // 2. ACTIVATE: Clean up old caches if version changes
@@ -33,20 +37,22 @@ self.addEventListener('activate', event => {
       }));
     })
   );
+  // Take control of all clients immediately
+  self.clients.claim();
 });
 
 // 3. FETCH: Intercept requests
-//    Shell assets → serve from cache
-//    Dynamic content (leaderboard, API) → fetch from network, cache for offline
+//    Shell assets  → serve from cache instantly
+//    Dynamic data  → fetch from network, cache for offline fallback
 self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        // Found in cache (App Shell) → return it instantly
+        // Found in cache (App Shell) → return instantly
         if (response) {
           return response;
         }
-        // Not in cache (dynamic content) → fetch from network
+        // Not cached → fetch from network
         return fetch(event.request)
           .then(networkResponse => {
             // Cache dynamic responses for offline use
@@ -56,8 +62,9 @@ self.addEventListener('fetch', event => {
             });
           })
           .catch(() => {
-            // Network failed and not cached → offline fallback
-            console.warn('Mad Beans SW: offline, resource not available');
+            // Offline and not cached → return index as fallback
+            console.warn('Mad Beans SW: offline, serving fallback');
+            return caches.match('/index.html');
           });
       })
   );
