@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mad Beans – Offline</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0a0c1a">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0c1a; --cyan: #00e5ff; --magenta: #e040fb;
+      --red: #ff5252; --dim: #2e3870; --text: #c8d4ff;
+      --px: 'Press Start 2P', monospace;
+    }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html, body { width:100%; height:100%; background:var(--bg); overflow:hidden; font-family:var(--px); color:var(--text); }
+    .scanlines {
+      position:fixed; inset:0; z-index:10; pointer-events:none;
+      background:repeating-linear-gradient(0deg,transparent 0px,transparent 1px,rgba(0,0,0,0.12) 1px,rgba(0,0,0,0.12) 2px);
+    }
+    .corner { position:fixed; z-index:20; width:40px; height:40px; }
+    .tl { top:20px; left:20px; border-top:3px solid var(--red); border-left:3px solid var(--red); }
+    .tr { top:20px; right:20px; border-top:3px solid var(--red); border-right:3px solid var(--red); }
+    .bl { bottom:20px; left:20px; border-bottom:3px solid var(--red); border-left:3px solid var(--red); }
+    .br { bottom:20px; right:20px; border-bottom:3px solid var(--red); border-right:3px solid var(--red); }
+    .wrap {
+      position:relative; z-index:5; width:100%; height:100%;
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:28px;
+    }
+    .no-signal {
+      font-size: clamp(3rem, 10vw, 5rem);
+      animation: flicker 2s step-end infinite;
+    }
+    @keyframes flicker {
+      0%,100%{opacity:1} 25%{opacity:0.3} 50%{opacity:1} 75%{opacity:0.5}
+    }
+    .title {
+      font-size: clamp(1rem, 4vw, 1.6rem);
+      color: var(--red);
+      text-shadow: 4px 4px 0 #000, 0 0 20px rgba(255,82,82,0.5);
+      letter-spacing: 4px;
+    }
+    .sub {
+      font-size: 0.38rem; color:var(--dim); letter-spacing:2px; text-align:center; line-height:3;
+    }
+    .btn-retry {
+      font-family:var(--px); font-size:0.5rem; letter-spacing:3px;
+      background:var(--cyan); color:#000; border:none; padding:16px 32px;
+      cursor:pointer; box-shadow:6px 6px 0 #000, 0 0 20px rgba(0,229,255,0.3);
+      transition:transform .08s, box-shadow .08s;
+      margin-top:8px;
+    }
+    .btn-retry:hover { transform:translate(-3px,-3px); box-shadow:9px 9px 0 #000; }
+    .btn-retry:active{ transform:translate(4px,4px); box-shadow:2px 2px 0 #000; }
+    .status-bar {
+      display:flex; gap:12px; margin-top:12px;
+    }
+    .status-pill {
+      font-size:0.28rem; padding:5px 12px;
+      border:1px solid var(--dim); color:var(--dim); letter-spacing:2px;
+    }
+    .status-pill.err { border-color:rgba(255,82,82,0.5); color:var(--red); }
+  </style>
+</head>
+<body>
+  <div class="scanlines"></div>
+  <div class="corner tl"></div>
+  <div class="corner tr"></div>
+  <div class="corner bl"></div>
+  <div class="corner br"></div>
+
+  <div class="wrap">
+    <div class="no-signal">📡</div>
+    <div class="title">NO CONNECTION</div>
+    <div class="sub">
+      LOST SIGNAL TO SERVER.<br>
+      CHECK YOUR NETWORK<br>
+      AND TRY AGAIN, CHEF.
+    </div>
+    <button class="btn-retry" onclick="retry()">⟳ &nbsp;RETRY</button>
+    <div class="status-bar">
+      <span class="status-pill err">✕ OFFLINE</span>
+      <span class="status-pill">CACHED DATA AVAILABLE</span>
+    </div>
+  </div>
+
+  <script>
+    function retry() {
+      window.location.reload();
+    }
+    // Auto-retry cuando recupere conexión
+    window.addEventListener('online', () => {
+      window.location.href = '/index.html';
+    });
+  </script>
+</body>
+</html>

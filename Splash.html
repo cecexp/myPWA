@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mad Beans – Loading</title>
+
+  <!-- PWA Meta Tags -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0a0c1a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mad Beans">
+
+  <!-- Apple Touch Icons (splash + icon) -->
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-192.png">
+
+  <!--
+    Apple Splash Screens — se generan por resolución de pantalla.
+    En producción se necesita un PNG por breakpoint.
+    Aquí dejamos el template con los media queries correctos.
+  -->
+  <link rel="apple-touch-startup-image"
+        href="/icons/splash-2048x2732.png"
+        media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2)">
+  <link rel="apple-touch-startup-image"
+        href="/icons/splash-1668x2388.png"
+        media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2)">
+  <link rel="apple-touch-startup-image"
+        href="/icons/splash-1170x2532.png"
+        media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)">
+  <link rel="apple-touch-startup-image"
+        href="/icons/splash-1125x2436.png"
+        media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)">
+  <link rel="apple-touch-startup-image"
+        href="/icons/splash-750x1334.png"
+        media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)">
+
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg:      #0a0c1a;
+      --cyan:    #00e5ff;
+      --magenta: #e040fb;
+      --amber:   #ffab00;
+      --green:   #00e676;
+      --dim:     #2e3870;
+      --px: 'Press Start 2P', monospace;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--bg);
+      overflow: hidden;
+      font-family: var(--px);
+    }
+
+    /* ── SCANLINES ─── */
+    .scanlines {
+      position: fixed; inset: 0; z-index: 10; pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg, transparent 0px, transparent 1px,
+        rgba(0,0,0,0.12) 1px, rgba(0,0,0,0.12) 2px
+      );
+    }
+
+    /* ── PIXEL GRID BG ─── */
+    .pixel-grid {
+      position: fixed; inset: 0; z-index: 1;
+      background-image:
+        linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+      background-size: 32px 32px;
+      animation: gridPan 20s linear infinite;
+    }
+
+    @keyframes gridPan {
+      from { background-position: 0 0; }
+      to   { background-position: 32px 32px; }
+    }
+
+    /* ── CORNER DECORATIONS ─── */
+    .corner {
+      position: fixed; z-index: 20;
+      width: 48px; height: 48px;
+    }
+    .corner.tl { top: 24px; left: 24px;
+      border-top: 3px solid var(--cyan); border-left: 3px solid var(--cyan); }
+    .corner.tr { top: 24px; right: 24px;
+      border-top: 3px solid var(--cyan); border-right: 3px solid var(--cyan); }
+    .corner.bl { bottom: 24px; left: 24px;
+      border-bottom: 3px solid var(--cyan); border-left: 3px solid var(--cyan); }
+    .corner.br { bottom: 24px; right: 24px;
+      border-bottom: 3px solid var(--cyan); border-right: 3px solid var(--cyan); }
+
+    /* ── MAIN CONTENT ─── */
+    .splash-wrap {
+      position: relative; z-index: 5;
+      width: 100%; height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+    }
+
+    /* ── PIXEL BEAN SVG ICON ─── */
+    .bean-icon {
+      position: relative;
+      margin-bottom: 48px;
+      animation: beanFloat 2.5s ease-in-out infinite;
+    }
+
+    @keyframes beanFloat {
+      0%, 100% { transform: translateY(0px);   }
+      50%       { transform: translateY(-12px); }
+    }
+
+    .bean-pixel {
+      width: 96px;
+      height: 96px;
+      image-rendering: pixelated;
+    }
+
+    /* Pixel art coffee bean usando CSS */
+    .pixel-bean {
+      display: grid;
+      grid-template-columns: repeat(10, 9px);
+      grid-template-rows: repeat(10, 9px);
+      gap: 1px;
+      filter: drop-shadow(0 0 16px var(--cyan)) drop-shadow(0 0 32px rgba(0,229,255,0.3));
+    }
+
+    .pb { width: 9px; height: 9px; }
+    .pb-0 { background: transparent; }
+    .pb-b { background: #3d1c08; } /* brown bean */
+    .pb-d { background: #1a0804; } /* dark crease */
+    .pb-c { background: #6b3420; } /* light brown */
+    .pb-g { background: var(--cyan); } /* cyan glow pixel */
+
+    /* ── GLOW ORB behind bean ─── */
+    .bean-glow {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 140px; height: 140px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,229,255,0.15) 0%, transparent 70%);
+      animation: glowPulse 2.5s ease-in-out infinite;
+      z-index: -1;
+    }
+
+    @keyframes glowPulse {
+      0%, 100% { opacity: 0.5; transform: translate(-50%,-50%) scale(1);   }
+      50%       { opacity: 1;   transform: translate(-50%,-50%) scale(1.2); }
+    }
+
+    /* ── LOGO ─── */
+    .splash-logo {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .logo-main {
+      display: block;
+      font-size: clamp(1.6rem, 6vw, 2.8rem);
+      color: #fff;
+      letter-spacing: 6px;
+      text-shadow:
+        5px 5px 0 #000,
+        0 0 30px var(--cyan),
+        0 0 60px rgba(0,229,255,0.25);
+      animation: logoPulse 3s ease-in-out infinite;
+    }
+
+    @keyframes logoPulse {
+      0%, 100% { text-shadow: 5px 5px 0 #000, 0 0 20px var(--cyan); }
+      50%       { text-shadow: 5px 5px 0 #000, 0 0 50px var(--cyan), 0 0 100px rgba(0,229,255,0.3); }
+    }
+
+    .logo-sub {
+      display: block;
+      font-size: 0.45rem;
+      color: var(--dim);
+      letter-spacing: 5px;
+      margin-top: 12px;
+    }
+
+    /* ── LOADING BAR ─── */
+    .loading-section {
+      margin-top: 52px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      width: 300px;
+    }
+
+    .loading-label {
+      font-size: 0.32rem;
+      color: var(--cyan);
+      letter-spacing: 3px;
+      opacity: 0.7;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 14px;
+      border: 2px solid var(--dim);
+      background: rgba(5,8,20,0.8);
+      position: relative;
+      overflow: hidden;
+      box-shadow: inset 2px 2px 0 rgba(0,0,0,0.5);
+    }
+
+    /* pixel grid overlay on bar */
+    .progress-track::before {
+      content: '';
+      position: absolute; inset: 0; z-index: 2;
+      background: repeating-linear-gradient(
+        90deg, transparent 0px, transparent 7px,
+        rgba(0,0,0,0.2) 7px, rgba(0,0,0,0.2) 8px
+      );
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--cyan), #fff 80%, var(--cyan));
+      box-shadow: 0 0 12px var(--cyan), 0 0 4px #fff;
+      animation: loadFill 2.8s ease-out forwards;
+      position: relative;
+    }
+
+    /* shimmer on fill */
+    .progress-fill::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent 60%, rgba(255,255,255,0.4) 80%, transparent 100%);
+      animation: shimmer 1.2s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      from { transform: translateX(-100%); }
+      to   { transform: translateX(300%);  }
+    }
+
+    @keyframes loadFill {
+      0%   { width: 0%;   }
+      20%  { width: 18%;  }
+      40%  { width: 42%;  }
+      60%  { width: 65%;  }
+      80%  { width: 88%;  }
+      100% { width: 100%; }
+    }
+
+    .loading-steps {
+      font-size: 0.3rem;
+      color: var(--dim);
+      letter-spacing: 2px;
+      height: 14px;
+      transition: color 0.3s;
+    }
+
+    .loading-steps.done { color: var(--green); }
+
+    /* ── BOTTOM TAGS ─── */
+    .splash-footer {
+      position: fixed;
+      bottom: 40px;
+      display: flex; gap: 12px;
+      z-index: 20;
+    }
+
+    .tag {
+      font-size: 0.28rem;
+      padding: 5px 12px;
+      border: 1px solid var(--dim);
+      color: var(--dim);
+      letter-spacing: 2px;
+    }
+
+    .tag.on { border-color: rgba(0,230,118,0.5); color: var(--green); }
+
+    /* ── VERSION ─── */
+    .version {
+      position: fixed; top: 32px; right: 32px; z-index: 20;
+      font-size: 0.26rem; color: var(--dim); letter-spacing: 1px;
+    }
+
+    /* ── FADE OUT to main app ─── */
+    body.fade-out {
+      animation: fadeOut 0.6s ease-out forwards;
+    }
+
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to   { opacity: 0; }
+    }
+
+    /* ── RESPONSIVE ─── */
+    @media (max-width: 480px) {
+      .splash-footer { flex-direction: column; align-items: center; }
+      .corner { width: 32px; height: 32px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="scanlines"></div>
+  <div class="pixel-grid"></div>
+
+  <!-- Corners decorativos -->
+  <div class="corner tl"></div>
+  <div class="corner tr"></div>
+  <div class="corner bl"></div>
+  <div class="corner br"></div>
+
+  <span class="version">v0.1.0 BETA</span>
+
+  <div class="splash-wrap">
+
+    <!-- Pixel bean icon -->
+    <div class="bean-icon">
+      <div class="bean-glow"></div>
+      <!--
+        Pixel art 10×10 de un coffee bean en CSS puro.
+        Patrón: 0=vacío, b=marrón, d=crease oscuro, c=marrón claro, g=cyan
+      -->
+      <div class="pixel-bean">
+        <!-- Row 1 -->
+        <div class="pb pb-0"></div><div class="pb pb-0"></div><div class="pb pb-0"></div><div class="pb pb-b"></div><div class="pb pb-b"></div><div class="pb pb-b"></div><div class="pb pb-b"></div><div class="pb pb-0"></div><div class="pb pb-0"></div><div class="pb pb-0"></div>
+        <!-- Row 2 -->
+        <div class="pb pb-0"></div><div class="pb pb-0"></div><div class="pb pb-b"></div><div class="pb pb-c"></div><div class="pb pb-c"></div><div class="pb pb-c"></div><div class="pb pb-c"></div><div class="pb pb-b"></div><div class="pb pb-0"></div><div class="pb pb-0"></div>
+        <!-- Row 3 -->
+        <div class="pb pb-0"></div><div class="pb pb-b"></div><div class="pb pb-c"></div><div class="pb pb-c"></div><div class="pb pb-d"></div><div class="pb pb-c"></div><div class="pb pb-c"></div><div class="pb pb-c"></div><div class="pb pb-b"></div><div class="pb pb-0"></div>
+        <!-- Row 4 -->
+        <div class="pb pb-b"></div><div class="pb pb-c"></div><div class="pb pb-c"></div><div class="pb pb-d"></div><div class="pb pb-d"></div><div class="pb pb-d"></div><div class="pb pb-c"></div><div class="pb pb-c"></div><div class="pb pb-c"></div><div class="pb pb-b"></div>
+        <!-- Row 5 -->
+        <div class="pb pb-b"></div><div class="pb pb-c"></div><div class="pb pb-d"></div><div class="pb pb-b"></div><div class="pb pb-d"></div><div class="pb pb-d"></div><div class="pb pb-b"></div><div class="pb pb-c"></div><div class="pb pb-c"></div><div class="pb pb-b"></div>
+        <!-- Row 6 -->
+        <div class="pb pb-b"></div><div class="pb pb-c"></div><div class="pb pb-b"></div><div class="pb pb-d"></div><div class="pb pb-d"></div><div class="pb pb-d"></div><div class="pb pb-d"></div><div class="pb pb-c"></div><div class="pb pb-c"></div><div class="pb pb-b"></div>
+        <!-- Row 7 -->
+        <div class="pb pb-b"></div><div class="pb pb-c"></div><div class="pb pb-c"></div><div class="pb pb-b"></div><div class="pb pb-d"></div><div class="pb pb-b"></div><div class="pb pb-c"></div><div class="pb pb-c"></div><div class="pb pb-c"></div><div class="pb pb-b"></div>
+        <!-- Row 8 -->
+        <div class="pb pb-0"></div><div class="pb pb-b"></div><div class="pb pb-c"></div><div class="pb pb-c"></div><div class="pb pb-b"></div><div class="pb pb-c"></div><div class="pb pb-c"></div><div class="pb pb-c"></div><div class="pb pb-b"></div><div class="pb pb-0"></div>
+        <!-- Row 9 -->
+        <div class="pb pb-0"></div><div class="pb pb-0"></div><div class="pb pb-b"></div><div class="pb pb-c"></div><div class="pb pb-c"></div><div class="pb pb-c"></div><div class="pb pb-c"></div><div class="pb pb-b"></div><div class="pb pb-0"></div><div class="pb pb-0"></div>
+        <!-- Row 10 -->
+        <div class="pb pb-0"></div><div class="pb pb-0"></div><div class="pb pb-0"></div><div class="pb pb-b"></div><div class="pb pb-g"></div><div class="pb pb-b"></div><div class="pb pb-b"></div><div class="pb pb-0"></div><div class="pb pb-0"></div><div class="pb pb-0"></div>
+      </div>
+    </div>
+
+    <!-- Logo -->
+    <div class="splash-logo">
+      <span class="logo-main">MAD BEANS</span>
+      <span class="logo-sub">MANAGE THE MADNESS</span>
+    </div>
+
+    <!-- Loading bar -->
+    <div class="loading-section">
+      <span class="loading-label">▸ LOADING GAME ASSETS</span>
+      <div class="progress-track">
+        <div class="progress-fill"></div>
+      </div>
+      <span class="loading-steps" id="load-step">INITIALIZING...</span>
+    </div>
+
+  </div>
+
+  <!-- Footer tags -->
+  <div class="splash-footer">
+    <span class="tag on">⬛ 4-PLAYER CO-OP</span>
+    <span class="tag">◆ ROGUELIKE</span>
+    <span class="tag">☕ COOKING CHAOS</span>
+  </div>
+
+  <script>
+    // Simula pasos de carga y luego redirige al index
+    const steps = [
+      'INITIALIZING...',
+      'LOADING ASSETS...',
+      'CONNECTING SERVER...',
+      'WARMING UP BEANS...',
+      'READY!',
+    ];
+
+    const el = document.getElementById('load-step');
+    let i = 0;
+
+    const interval = setInterval(() => {
+      if (i < steps.length) {
+        el.textContent = steps[i];
+        if (i === steps.length - 1) {
+          el.classList.add('done');
+          clearInterval(interval);
+          // Espera 400ms y navega al index
+          setTimeout(() => {
+            document.body.classList.add('fade-out');
+            setTimeout(() => {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+              
+              window.location.href = 'index.html';
+            }, 600);
+          }, 400);
+        }
+        i++;
+      }
+    }, 520);
+
+    // Registrar SW desde splash también
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>

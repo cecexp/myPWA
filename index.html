@@ -6,6 +6,42 @@
 <title>Mad Beans – Sessions</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0a0c1a">
+
+<!-- ════════════════════════════════════════
+  PWA META TAGS — SPLASH SCREEN & ICONS
+  Permiten que la PWA se instale como app
+  nativa con ícono y splash screen propios.
+════════════════════════════════════════ -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mad Beans">
+<meta name="application-name" content="Mad Beans">
+<meta name="description" content="4-player co-op roguelike cooking game. Manage the madness.">
+
+<!--
+  apple-touch-icon: ícono que aparece en la home screen de iOS.
+  Se recomienda PNG sin transparencia, 180×180px mínimo.
+  El browser escala automáticamente para cada dispositivo.
+-->
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png">
+
+<!--
+  Apple Splash Screens por resolución.
+  En producción: generar un PNG por breakpoint con herramientas
+  como pwa-asset-generator o PWACompat.
+-->
+<link rel="apple-touch-startup-image" href="/icons/splash-1170x2532.png"
+  media="(device-width:390px) and (device-height:844px) and (-webkit-device-pixel-ratio:3)">
+<link rel="apple-touch-startup-image" href="/icons/splash-1125x2436.png"
+  media="(device-width:375px) and (device-height:812px) and (-webkit-device-pixel-ratio:3)">
+<link rel="apple-touch-startup-image" href="/icons/splash-750x1334.png"
+  media="(device-width:375px) and (device-height:667px) and (-webkit-device-pixel-ratio:2)">
+
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
@@ -99,6 +135,18 @@ body {
 .dot { width:6px;height:6px; background:var(--green); box-shadow:0 0 6px var(--green); animation:blink 1s step-end infinite; }
 @keyframes blink{50%{opacity:0}}
 
+/* ── OFFLINE BANNER ─────────────────────────── */
+.offline-banner {
+  position: fixed; top: 54px; left: 0; right: 0; z-index: 99;
+  background: rgba(255,82,82,0.15); border-bottom: 1px solid rgba(255,82,82,0.4);
+  padding: 8px 32px;
+  font-size: 0.3rem; color: var(--red); letter-spacing: 2px;
+  text-align: center;
+  display: none;
+  animation: fadeDown .3s ease-out;
+}
+.offline-banner.show { display: block; }
+
 /* ── MAIN WRAP ─────────────────────────────── */
 .main-wrap {
   position: relative; z-index: 10;
@@ -169,7 +217,6 @@ body {
   to  {opacity:1;transform:translateY(0)}
 }
 
-/* corner accents */
 .panel::before {
   content:'';
   position:absolute; top:0; left:0;
@@ -185,7 +232,6 @@ body {
   border-right:3px solid var(--cyan);
 }
 
-/* scanline on panel */
 .panel-scan {
   position:absolute; inset:0; pointer-events:none; z-index:0;
   background: repeating-linear-gradient(
@@ -196,7 +242,6 @@ body {
 
 .panel > * { position:relative; z-index:1; }
 
-/* section label */
 .s-label {
   font-size: 0.38rem;
   color: var(--cyan);
@@ -205,7 +250,6 @@ body {
   margin-bottom: -12px;
 }
 
-/* divider */
 .divider {
   border: none;
   border-top: 1px solid var(--border2);
@@ -278,7 +322,6 @@ body {
   box-shadow: 2px 2px 0 #000;
 }
 
-/* join */
 .join-row { display:flex; gap:0; }
 
 .code-input {
@@ -313,7 +356,6 @@ body {
 .btn-join:hover  { background:#f8a8ff; transform:translate(-2px,-2px); box-shadow:6px 6px 0 #000; }
 .btn-join:active { transform:translate(3px,3px); box-shadow:1px 1px 0 #000; }
 
-/* msg */
 .msg { font-size:0.34rem; letter-spacing:1px; height:14px; transition:opacity .2s; }
 .msg.err  { color:var(--red); }
 .msg.ok   { color:var(--cyan); }
@@ -323,6 +365,7 @@ body {
 .bottom-info {
   display: flex; gap: 14px;
   animation: fadeUp .6s .4s ease-out both;
+  flex-wrap: wrap; justify-content: center;
 }
 
 .info-tag {
@@ -334,8 +377,12 @@ body {
   letter-spacing: 2px;
   display: flex; align-items: center; gap: 7px;
   backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+  text-decoration: none;
 }
 .info-tag.on { border-color:rgba(0,230,118,0.4); color:var(--green); }
+.info-tag.link:hover { border-color: rgba(0,229,255,0.5); color: var(--cyan); }
 
 /* ── MODAL ─────────────────────────────────── */
 .overlay {
@@ -401,14 +448,33 @@ body {
 }
 .btn-close:hover{background:var(--teal);color:#000;transform:translate(-2px,-2px);box-shadow:6px 6px 0 #000;}
 .btn-close:active{transform:translate(3px,3px);box-shadow:1px 1px 0 #000;}
+
+/* ── SW STATUS INDICATOR ────────────────────── */
+.sw-status {
+  position: fixed; bottom: 20px; right: 20px; z-index: 200;
+  font-size: 0.26rem; letter-spacing: 1px;
+  padding: 6px 12px;
+  border: 1px solid var(--border2);
+  background: rgba(11,14,30,0.9);
+  color: var(--dim);
+  backdrop-filter: blur(8px);
+  transition: all .3s;
+}
+.sw-status.active { border-color:rgba(0,230,118,0.4); color:var(--green); }
 </style>
 </head>
 <body>
 
 <div class="scanlines"></div>
-
-<!-- THREE.JS background -->
 <canvas id="three-canvas"></canvas>
+
+<!-- Offline banner -->
+<div class="offline-banner" id="offline-banner">
+  ⚠ NO CONNECTION — RUNNING FROM CACHE
+</div>
+
+<!-- SW status badge -->
+<div class="sw-status" id="sw-status">SW: LOADING...</div>
 
 <!-- Modal -->
 <div class="overlay" id="overlay">
@@ -445,7 +511,6 @@ body {
   <div class="panel">
     <div class="panel-scan"></div>
 
-    <!-- Name -->
     <div class="input-group">
       <div class="field-label">▸ YOUR CHEF NAME</div>
       <input class="name-input" id="username"
@@ -455,7 +520,6 @@ body {
 
     <hr class="divider">
 
-    <!-- Create -->
     <div style="display:flex;flex-direction:column;gap:12px">
       <div class="s-label">▸ NEW SESSION</div>
       <button class="btn btn-create" onclick="createSession()">
@@ -465,7 +529,6 @@ body {
 
     <hr class="divider">
 
-    <!-- Join -->
     <div style="display:flex;flex-direction:column;gap:12px">
       <div class="s-label" style="color:var(--magenta);text-shadow:0 0 8px rgba(224,64,251,0.4)">▸ JOIN SESSION</div>
       <div class="join-row">
@@ -484,6 +547,8 @@ body {
     <span class="info-tag on"><span class="dot"></span><span id="sessions-tag">0 ACTIVE SESSIONS</span></span>
     <span class="info-tag">4-PLAYER CO-OP</span>
     <span class="info-tag">ROGUELIKE</span>
+    <!-- Link a demo CSR vs SSR -->
+    <a class="info-tag link" href="ssr-demo.html">◆ CSR VS SSR</a>
   </div>
 
 </div>
@@ -502,10 +567,8 @@ const scene  = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
 camera.position.set(0, 0, 30);
 
-// Fog for depth
 scene.fog = new THREE.FogExp2(0x0a0c1a, 0.018);
 
-// Lights
 const ambientLight = new THREE.AmbientLight(0x112244, 0.8);
 scene.add(ambientLight);
 
@@ -521,191 +584,80 @@ const magentaLight = new THREE.PointLight(0xe040fb, 1.2, 40);
 magentaLight.position.set(15, 5, 5);
 scene.add(magentaLight);
 
-// ── Coffee Bean geometry (ellipsoid + crease) ──
 function createBeanGeometry() {
-  // Use SphereGeometry scaled to look like a bean
   const geo = new THREE.SphereGeometry(0.5, 12, 8);
-  // Squish into bean shape
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i);
-    const y = pos.getY(i);
-    const z = pos.getZ(i);
-    // elongate on Y, flatten on Z
-    pos.setXYZ(i, x * 0.7, y * 1.1, z * 0.55);
+    pos.setXYZ(i, pos.getX(i) * 0.7, pos.getY(i) * 1.1, pos.getZ(i) * 0.55);
   }
   geo.computeVertexNormals();
   return geo;
 }
 
-// Bean material — rich brown with specular
-const beanMat = new THREE.MeshStandardMaterial({
-  color: 0x3d1c08,
-  roughness: 0.4,
-  metalness: 0.15,
-});
+const beanMat = new THREE.MeshStandardMaterial({ color: 0x3d1c08, roughness: 0.4, metalness: 0.15 });
+const beanMatCyan = new THREE.MeshStandardMaterial({ color: 0x003344, roughness: 0.3, metalness: 0.4, emissive: 0x001122, emissiveIntensity: 0.3 });
+const creaseMat = new THREE.MeshStandardMaterial({ color: 0x1a0804, roughness: 0.9 });
 
-const beanMatCyan = new THREE.MeshStandardMaterial({
-  color: 0x003344,
-  roughness: 0.3,
-  metalness: 0.4,
-  emissive: 0x001122,
-  emissiveIntensity: 0.3,
-});
-
-// Bean crease — thin dark box across the bean
-function createCreaseGeometry() {
-  return new THREE.BoxGeometry(0.04, 1.1, 0.1);
-}
-
-const creaseMat = new THREE.MeshStandardMaterial({
-  color: 0x1a0804,
-  roughness: 0.9,
-});
-
-// ── Create beans ──
 const beans = [];
 const BEAN_COUNT = 55;
 const beanGeo = createBeanGeometry();
 
 for (let i = 0; i < BEAN_COUNT; i++) {
   const isCyan = Math.random() < 0.2;
-  const mat = isCyan ? beanMatCyan : beanMat;
-
   const group = new THREE.Group();
-
-  const bean = new THREE.Mesh(beanGeo, mat);
-  group.add(bean);
-
-  const crease = new THREE.Mesh(createCreaseGeometry(), creaseMat);
+  group.add(new THREE.Mesh(beanGeo, isCyan ? beanMatCyan : beanMat));
+  const crease = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.1, 0.1), creaseMat);
   crease.position.z = 0.52;
   group.add(crease);
-
-  // Spread across screen
-  group.position.set(
-    (Math.random() - 0.5) * 80,
-    (Math.random() - 0.5) * 60 + 40,
-    (Math.random() - 0.5) * 25 - 5
-  );
-
-  group.rotation.set(
-    Math.random() * Math.PI * 2,
-    Math.random() * Math.PI * 2,
-    Math.random() * Math.PI * 2
-  );
-
-  const scale = 0.5 + Math.random() * 1.2;
-  group.scale.setScalar(scale);
-
-  beans.push({
-    group,
-    vy:    0.04 + Math.random() * 0.09,
-    vx:    (Math.random() - 0.5) * 0.02,
-    rotX:  (Math.random() - 0.5) * 0.02,
-    rotY:  (Math.random() - 0.5) * 0.025,
-    rotZ:  (Math.random() - 0.5) * 0.015,
-    isCyan,
-  });
-
+  group.position.set((Math.random()-0.5)*80, (Math.random()-0.5)*60+40, (Math.random()-0.5)*25-5);
+  group.rotation.set(Math.random()*Math.PI*2, Math.random()*Math.PI*2, Math.random()*Math.PI*2);
+  group.scale.setScalar(0.5 + Math.random() * 1.2);
+  beans.push({ group, vy: 0.04+Math.random()*0.09, vx:(Math.random()-0.5)*0.02, rotX:(Math.random()-0.5)*0.02, rotY:(Math.random()-0.5)*0.025, rotZ:(Math.random()-0.5)*0.015 });
   scene.add(group);
 }
 
-// ── Steam particles (simple sprites) ──
 const steamParticles = [];
 const steamGeo = new THREE.PlaneGeometry(1, 1);
-const steamMat = new THREE.MeshBasicMaterial({
-  color: 0x00e5ff,
-  transparent: true,
-  opacity: 0,
-  depthWrite: false,
-  side: THREE.DoubleSide,
-});
-
 for (let i = 0; i < 30; i++) {
-  const mat = steamMat.clone();
+  const mat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
   const mesh = new THREE.Mesh(steamGeo, mat);
-
-  const x = (Math.random() - 0.5) * 60;
-  const y = (Math.random() - 0.5) * 50;
-  mesh.position.set(x, y, (Math.random() - 0.5) * 10 - 8);
-
-  const scale = 0.3 + Math.random() * 1.2;
-  mesh.scale.setScalar(scale);
-
-  steamParticles.push({
-    mesh,
-    vy:      0.05 + Math.random() * 0.08,
-    vx:      (Math.random() - 0.5) * 0.02,
-    life:    Math.random(),
-    maxOp:   0.04 + Math.random() * 0.09,
-    speed:   0.005 + Math.random() * 0.008,
-  });
-
+  mesh.position.set((Math.random()-0.5)*60, (Math.random()-0.5)*50, (Math.random()-0.5)*10-8);
+  mesh.scale.setScalar(0.3 + Math.random() * 1.2);
+  steamParticles.push({ mesh, vy:0.05+Math.random()*0.08, vx:(Math.random()-0.5)*0.02, life:Math.random(), maxOp:0.04+Math.random()*0.09, speed:0.005+Math.random()*0.008 });
   scene.add(mesh);
 }
 
-// ── Subtle star field ──
 const starsGeo = new THREE.BufferGeometry();
-const starCount = 300;
-const starPos = new Float32Array(starCount * 3);
-for (let i = 0; i < starCount; i++) {
-  starPos[i*3]   = (Math.random() - 0.5) * 200;
-  starPos[i*3+1] = (Math.random() - 0.5) * 150;
-  starPos[i*3+2] = -30 - Math.random() * 40;
-}
+const starPos = new Float32Array(900);
+for (let i = 0; i < 300; i++) { starPos[i*3]=(Math.random()-0.5)*200; starPos[i*3+1]=(Math.random()-0.5)*150; starPos[i*3+2]=-30-Math.random()*40; }
 starsGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-const starsMat = new THREE.PointsMaterial({ color: 0x8899cc, size: 0.15, transparent: true, opacity: 0.6 });
-scene.add(new THREE.Points(starsGeo, starsMat));
+scene.add(new THREE.Points(starsGeo, new THREE.PointsMaterial({ color: 0x8899cc, size: 0.15, transparent: true, opacity: 0.6 })));
 
-// ── Animate ──
 let frame = 0;
 function animate() {
   requestAnimationFrame(animate);
   frame++;
-
-  // Floating cyan light pulse
   cyanLight.intensity = 1.5 + Math.sin(frame * 0.02) * 0.8;
-
-  // Beans fall and rotate
   beans.forEach(b => {
     b.group.position.y -= b.vy;
     b.group.position.x += b.vx;
     b.group.rotation.x += b.rotX;
     b.group.rotation.y += b.rotY;
     b.group.rotation.z += b.rotZ;
-
-    // Reset when off screen bottom
-    if (b.group.position.y < -35) {
-      b.group.position.y = 38 + Math.random() * 10;
-      b.group.position.x = (Math.random() - 0.5) * 80;
-    }
+    if (b.group.position.y < -35) { b.group.position.y = 38+Math.random()*10; b.group.position.x=(Math.random()-0.5)*80; }
   });
-
-  // Steam rises
   steamParticles.forEach(s => {
     s.life += s.speed;
     s.mesh.position.y += s.vy;
     s.mesh.position.x += s.vx;
-
     const prog = s.life % 1;
-    s.mesh.material.opacity = prog < 0.2
-      ? (prog / 0.2) * s.maxOp
-      : prog > 0.7
-        ? ((1 - prog) / 0.3) * s.maxOp
-        : s.maxOp;
-
-    if (s.mesh.position.y > 35) {
-      s.mesh.position.y = -35;
-      s.mesh.position.x = (Math.random() - 0.5) * 60;
-      s.life = 0;
-    }
+    s.mesh.material.opacity = prog<0.2 ? (prog/0.2)*s.maxOp : prog>0.7 ? ((1-prog)/0.3)*s.maxOp : s.maxOp;
+    if (s.mesh.position.y > 35) { s.mesh.position.y=-35; s.mesh.position.x=(Math.random()-0.5)*60; s.life=0; }
   });
-
   renderer.render(scene, camera);
 }
 animate();
 
-// Resize
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
@@ -719,8 +671,7 @@ let activeSessions = 3 + Math.floor(Math.random() * 7);
 
 function updateSessions() {
   document.getElementById('active-count').textContent = activeSessions;
-  document.getElementById('sessions-tag').textContent =
-    `${activeSessions} ACTIVE SESSION${activeSessions !== 1 ? 'S' : ''}`;
+  document.getElementById('sessions-tag').textContent = `${activeSessions} ACTIVE SESSION${activeSessions !== 1 ? 'S' : ''}`;
 }
 updateSessions();
 
@@ -729,13 +680,8 @@ setInterval(() => {
   updateSessions();
 }, 7000);
 
-function getUsername() {
-  return document.getElementById('username').value.trim();
-}
-
-function genCode() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
-}
+function getUsername() { return document.getElementById('username').value.trim(); }
+function genCode() { return Math.random().toString(36).substring(2, 8).toUpperCase(); }
 
 function createSession() {
   const name = getUsername();
@@ -746,22 +692,19 @@ function createSession() {
   updateSessions();
 }
 
-function closeModal() {
-  document.getElementById('overlay').classList.remove('show');
-}
+function closeModal() { document.getElementById('overlay').classList.remove('show'); }
 
 function showMsg(txt, type) {
   const el = document.getElementById('msg');
-  el.textContent = txt;
-  el.className = `msg ${type}`;
+  el.textContent = txt; el.className = `msg ${type}`;
   setTimeout(() => el.className = 'msg hide', 2600);
 }
 
 function joinSession() {
   const name = getUsername();
   const code = document.getElementById('code-input').value.trim();
-  if (!name)         { showMsg('⚠ ENTER YOUR CHEF NAME FIRST', 'err'); return; }
-  if (code.length < 4)  { showMsg('⚠ CODE TOO SHORT', 'err'); return; }
+  if (!name)          { showMsg('⚠ ENTER YOUR CHEF NAME FIRST', 'err'); return; }
+  if (code.length < 4){ showMsg('⚠ CODE TOO SHORT', 'err'); return; }
   if (code.length !== 6){ showMsg('⚠ ENTER 6-CHAR CODE', 'err'); return; }
   showMsg(`✔ JOINING ${code} AS ${name}...`, 'ok');
 }
@@ -771,15 +714,43 @@ document.getElementById('overlay').addEventListener('click', function(e) {
 });
 </script>
 
-<!-- PWA: Service Worker registration -->
+<!-- ════════════════════════════════════════
+  SERVICE WORKER REGISTRATION
+  Se registra en /sw.js con scope raíz.
+  El SW intercepta fetch events y aplica
+  estrategias de caché según tipo de recurso.
+════════════════════════════════════════ -->
 <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js')
-        .then(reg => console.log('SW ready! Scope:', reg.scope))
-        .catch(err => console.error('SW failed:', err));
-    });
-  }
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => {
+        console.log('[App] SW registered! Scope:', reg.scope);
+        document.getElementById('sw-status').textContent = 'SW: ACTIVE ✔';
+        document.getElementById('sw-status').classList.add('active');
+      })
+      .catch(err => {
+        console.error('[App] SW failed:', err);
+        document.getElementById('sw-status').textContent = 'SW: FAILED ✖';
+      });
+  });
+} else {
+  document.getElementById('sw-status').textContent = 'SW: NOT SUPPORTED';
+}
+
+// ── ONLINE / OFFLINE detection ───────────────
+function handleOnline() {
+  document.getElementById('offline-banner').classList.remove('show');
+}
+function handleOffline() {
+  document.getElementById('offline-banner').classList.add('show');
+}
+
+window.addEventListener('online',  handleOnline);
+window.addEventListener('offline', handleOffline);
+
+// Check inicial
+if (!navigator.onLine) handleOffline();
 </script>
 </body>
 </html>

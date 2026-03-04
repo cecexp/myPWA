@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<!--
+  ══════════════════════════════════════════════════════
+  MAD BEANS — CSR vs SSR DEMO
+  ══════════════════════════════════════════════════════
+
+  SSR (Server-Side Rendering):
+  → El HTML llega pre-renderizado desde el servidor.
+  → El contenido estático de esta página simula eso:
+    el bloque #ssr-block tiene contenido desde el inicio.
+  → Ventaja: FCP (First Contentful Paint) más rápido,
+    mejor SEO, funciona sin JS.
+
+  CSR (Client-Side Rendering):
+  → El contenido lo genera JavaScript en el browser.
+  → El bloque #csr-block empieza vacío y se rellena
+    con fetch + JS después de cargar.
+  → Ventaja: apps dinámicas, interactividad rica,
+    sin round-trips al server para cada acción.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mad Beans – CSR vs SSR</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0a0c1a">
+
+  <!--
+    SSR META: en un servidor real (Next.js, Nuxt, etc.)
+    estas etiquetas se generarían dinámicamente por request.
+    Aquí representan el "output" ya renderizado.
+  -->
+  <meta name="description" content="Mad Beans: 4-player co-op roguelike cooking game. Manage the madness with your crew.">
+  <meta property="og:title" content="Mad Beans – Manage the Madness">
+  <meta property="og:description" content="4-player co-op roguelike. Create or join a session now.">
+
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#0a0c1a; --bg2:#0d1020; --panel:#0f1224;
+      --border:#1e2248; --border2:#2e3870;
+      --cyan:#00e5ff; --magenta:#e040fb;
+      --amber:#ffab00; --green:#00e676; --red:#ff5252;
+      --dim:#3a4070; --text:#c8d4ff;
+      --px: 'Press Start 2P', monospace;
+    }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family:var(--px); background:var(--bg); color:var(--text);
+      min-height:100vh; padding:80px 24px 60px;
+    }
+    .scanlines {
+      position:fixed; inset:0; z-index:999; pointer-events:none;
+      background:repeating-linear-gradient(0deg,transparent,transparent 1px,rgba(0,0,0,0.1) 1px,rgba(0,0,0,0.1) 2px);
+    }
+
+    /* ── TOP BAR ── */
+    .topbar {
+      position:fixed; top:0; left:0; right:0; z-index:100;
+      background:rgba(10,12,26,0.95); backdrop-filter:blur(12px);
+      border-bottom:2px solid var(--border2);
+      height:54px; display:flex; align-items:center; justify-content:space-between;
+      padding:0 28px;
+    }
+    .topbar-logo { font-size:0.65rem; color:#fff; text-shadow:3px 3px 0 #000, 0 0 20px var(--cyan); letter-spacing:3px; }
+    .back-btn {
+      font-family:var(--px); font-size:0.3rem; letter-spacing:2px;
+      background:var(--border2); color:var(--text); border:none;
+      padding:8px 16px; cursor:pointer; text-decoration:none;
+      display:flex; align-items:center; gap:8px;
+      box-shadow:3px 3px 0 #000;
+      transition:background .1s, transform .08s;
+    }
+    .back-btn:hover { background:var(--cyan); color:#000; transform:translate(-2px,-2px); }
+
+    /* ── HERO ── */
+    .hero {
+      max-width:900px; margin:0 auto 60px; text-align:center;
+    }
+    .page-title {
+      font-size:clamp(0.9rem, 3vw, 1.5rem);
+      color:#fff; letter-spacing:4px;
+      text-shadow:4px 4px 0 #000, 0 0 30px var(--cyan);
+      margin-bottom:16px;
+    }
+    .page-sub { font-size:0.34rem; color:var(--dim); letter-spacing:2px; line-height:3; }
+
+    /* ── GRID LAYOUT ── */
+    .compare-grid {
+      max-width:1100px; margin:0 auto;
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:32px;
+      margin-bottom:60px;
+    }
+    @media(max-width:760px) {
+      .compare-grid { grid-template-columns:1fr; }
+    }
+
+    /* ── CARD ── */
+    .card {
+      background:rgba(11,14,30,0.9); backdrop-filter:blur(16px);
+      border:2px solid var(--border2);
+      box-shadow:8px 8px 0 rgba(0,0,0,0.8), 0 0 40px rgba(0,229,255,0.05);
+      position:relative; overflow:hidden;
+    }
+    .card-header {
+      padding:20px 28px 16px;
+      border-bottom:2px solid var(--border2);
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .card-title { font-size:0.55rem; letter-spacing:3px; }
+    .card-title.ssr { color:var(--cyan); text-shadow:0 0 12px rgba(0,229,255,0.5); }
+    .card-title.csr { color:var(--magenta); text-shadow:0 0 12px rgba(224,64,251,0.5); }
+    .badge {
+      font-size:0.26rem; padding:4px 10px; letter-spacing:1px;
+      border:1px solid; display:flex; align-items:center; gap:5px;
+    }
+    .badge.ssr { border-color:rgba(0,229,255,0.4); color:var(--cyan); }
+    .badge.csr { border-color:rgba(224,64,251,0.4); color:var(--magenta); }
+
+    .card-body { padding:24px 28px; }
+
+    /* ── EXPLAIN BOX ── */
+    .explain-box {
+      background:rgba(5,8,20,0.6); border:1px solid var(--border);
+      padding:14px 16px; margin-bottom:20px; line-height:2.8;
+    }
+    .explain-box p { font-size:0.3rem; color:var(--dim); }
+    .explain-box strong { color:var(--text); }
+
+    /* ── PRO/CON LIST ── */
+    .fact-list { list-style:none; display:flex; flex-direction:column; gap:8px; margin-bottom:20px; }
+    .fact-list li { font-size:0.3rem; letter-spacing:1px; display:flex; align-items:flex-start; gap:8px; line-height:2.2; }
+    .fact-list li.pro::before { content:'✔'; color:var(--green); flex-shrink:0; }
+    .fact-list li.con::before { content:'✖'; color:var(--red); flex-shrink:0; }
+    .fact-list li.neu::before { content:'◆'; color:var(--amber); flex-shrink:0; }
+
+    /* ── DEMO SECTION inside card ── */
+    .demo-label {
+      font-size:0.32rem; color:var(--dim); letter-spacing:2px;
+      margin-bottom:10px; display:flex; align-items:center; gap:8px;
+    }
+    .demo-label::before { content:'▸'; }
+
+    /* SSR demo: content pre-rendered */
+    #ssr-block {
+      background:rgba(0,229,255,0.04); border:1px solid rgba(0,229,255,0.2);
+      padding:16px;
+    }
+
+    /* CSR demo: starts empty, JS fills it */
+    #csr-block {
+      background:rgba(224,64,251,0.04); border:1px solid rgba(224,64,251,0.2);
+      padding:16px; min-height:120px;
+      position:relative;
+    }
+
+    .session-item {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:8px 0; border-bottom:1px solid var(--border);
+    }
+    .session-item:last-child { border-bottom:none; }
+    .session-name { font-size:0.36rem; color:var(--text); letter-spacing:2px; }
+    .session-meta { font-size:0.28rem; color:var(--dim); letter-spacing:1px; }
+    .session-players { font-size:0.3rem; letter-spacing:1px; }
+    .session-players.full { color:var(--red); }
+    .session-players.open { color:var(--green); }
+
+    /* CSR loading skeleton */
+    .csr-skeleton { display:flex; flex-direction:column; gap:10px; }
+    .sk-line {
+      height:12px; background:var(--border); border-radius:2px;
+      animation:skPulse 1.4s ease-in-out infinite;
+    }
+    .sk-line:nth-child(2) { animation-delay:.2s; width:80%; }
+    .sk-line:nth-child(3) { animation-delay:.4s; width:65%; }
+    @keyframes skPulse {
+      0%,100%{opacity:1} 50%{opacity:0.4}
+    }
+
+    /* csr timestamp badge */
+    .render-time {
+      font-size:0.26rem; letter-spacing:1px; padding:4px 8px;
+      border:1px solid var(--border); color:var(--dim);
+      display:inline-block; margin-top:10px;
+    }
+    .render-time.ssr { border-color:rgba(0,229,255,0.3); color:var(--cyan); }
+    .render-time.csr { border-color:rgba(224,64,251,0.3); color:var(--magenta); }
+
+    /* ── METRICS TABLE ── */
+    .metrics-section {
+      max-width:1100px; margin:0 auto 60px;
+    }
+    .section-title {
+      font-size:0.55rem; color:var(--amber); letter-spacing:3px;
+      text-shadow:0 0 12px rgba(255,171,0,0.4);
+      margin-bottom:24px; text-align:center;
+    }
+    .metrics-table {
+      width:100%; border-collapse:collapse;
+      border:2px solid var(--border2);
+    }
+    .metrics-table th {
+      font-family:var(--px); font-size:0.3rem; letter-spacing:2px;
+      padding:14px 20px; text-align:left;
+      background:rgba(11,14,30,0.95); border-bottom:2px solid var(--border2);
+    }
+    .metrics-table th:nth-child(2) { color:var(--cyan); }
+    .metrics-table th:nth-child(3) { color:var(--magenta); }
+    .metrics-table td {
+      font-family:var(--px); font-size:0.28rem; letter-spacing:1px; line-height:2.4;
+      padding:12px 20px; border-bottom:1px solid var(--border);
+      background:rgba(11,14,30,0.7); vertical-align:top;
+    }
+    .metrics-table td:first-child { color:var(--dim); }
+    .metrics-table td:nth-child(2) { color:rgba(0,229,255,0.85); }
+    .metrics-table td:nth-child(3) { color:rgba(224,64,251,0.85); }
+    .win-cell { background:rgba(0,230,118,0.06) !important; }
+
+    /* ── LIGHTHOUSE SECTION ── */
+    .lighthouse-section {
+      max-width:1100px; margin:0 auto 60px;
+    }
+    .lh-grid {
+      display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:20px;
+    }
+    .lh-card {
+      background:rgba(11,14,30,0.9); border:2px solid var(--border2);
+      padding:24px; display:flex; flex-direction:column; align-items:center; gap:14px;
+      box-shadow:6px 6px 0 rgba(0,0,0,0.7);
+    }
+    .lh-score {
+      font-size:2rem;
+      text-shadow:0 0 24px currentColor;
+    }
+    .lh-label { font-size:0.3rem; color:var(--dim); letter-spacing:2px; text-align:center; line-height:2.4; }
+    .lh-bar-track {
+      width:100%; height:8px;
+      background:var(--border); position:relative; overflow:hidden;
+    }
+    .lh-bar-fill {
+      height:100%; transition:width 1.2s ease-out;
+      box-shadow:0 0 8px currentColor;
+    }
+
+    /* score colors */
+    .score-green  { color:var(--green); }
+    .score-amber  { color:var(--amber); }
+    .score-red    { color:var(--red); }
+    .score-cyan   { color:var(--cyan); }
+
+    /* ── HOW TO TEST ── */
+    .test-section {
+      max-width:900px; margin:0 auto 60px;
+      background:rgba(11,14,30,0.9); border:2px solid var(--border2);
+      padding:32px 40px;
+      box-shadow:8px 8px 0 rgba(0,0,0,0.8);
+      position:relative;
+    }
+    .test-section::before {
+      content:''; position:absolute; top:0; left:0;
+      width:16px; height:16px; border-top:3px solid var(--green); border-left:3px solid var(--green);
+    }
+    .test-section::after {
+      content:''; position:absolute; bottom:0; right:0;
+      width:16px; height:16px; border-bottom:3px solid var(--green); border-right:3px solid var(--green);
+    }
+    .test-step {
+      display:flex; gap:20px; align-items:flex-start; margin-bottom:20px;
+    }
+    .step-num {
+      font-size:0.7rem; color:var(--green); flex-shrink:0; width:28px;
+      text-shadow:0 0 10px rgba(0,230,118,0.5);
+    }
+    .step-content { flex:1; }
+    .step-title { font-size:0.38rem; color:var(--text); letter-spacing:2px; margin-bottom:8px; }
+    .step-desc { font-size:0.28rem; color:var(--dim); letter-spacing:1px; line-height:2.8; }
+    .code-inline {
+      font-family:var(--px); font-size:0.26rem;
+      background:rgba(0,229,255,0.08); border:1px solid rgba(0,229,255,0.2);
+      color:var(--cyan); padding:2px 8px; letter-spacing:1px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="scanlines"></div>
+
+<!-- Top bar -->
+<header class="topbar">
+  <span class="topbar-logo">MAD BEANS</span>
+  <a class="back-btn" href="index.html">◂ &nbsp;BACK TO GAME</a>
+</header>
+
+<!-- Hero -->
+<div class="hero">
+  <h1 class="page-title">CSR VS SSR</h1>
+  <p class="page-sub">
+    CLIENT-SIDE vs SERVER-SIDE RENDERING<br>
+    IMPLEMENTED & COMPARED IN A PWA CONTEXT
+  </p>
+</div>
+
+<!-- ══ COMPARE GRID ══ -->
+<div class="compare-grid">
+
+  <!-- ── SSR CARD ── -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title ssr">SSR</span>
+      <span class="badge ssr">⬛ SERVER-SIDE</span>
+    </div>
+    <div class="card-body">
+
+      <div class="explain-box">
+        <p>
+          <strong>El HTML se genera en el servidor</strong> antes de llegar al browser.
+          El cliente recibe una página ya completa —lista para mostrar—
+          sin necesidad de ejecutar JS para ver el contenido inicial.
+          Usado por: <strong>Next.js, Nuxt.js, Astro, PHP, Django...</strong>
+        </p>
+      </div>
+
+      <ul class="fact-list">
+        <li class="pro">FCP (First Contentful Paint) instantáneo</li>
+        <li class="pro">Excelente SEO — crawlers ven contenido real</li>
+        <li class="pro">Funciona aunque JS esté deshabilitado</li>
+        <li class="pro">Mejor para contenido estático o poco dinámico</li>
+        <li class="con">Cada navegación puede requerir request al server</li>
+        <li class="con">Mayor carga en el servidor bajo tráfico alto</li>
+        <li class="con">Time To Interactive (TTI) puede ser más lento</li>
+        <li class="neu">Requiere servidor Node/Python/PHP corriendo</li>
+      </ul>
+
+      <div class="demo-label">DEMO INTERACTIVO — SSR SIMULADO</div>
+
+      <!--
+        SSR DEMO:
+        Este bloque ya viene con HTML renderizado.
+        En un servidor real, este contenido lo generaría
+        Node.js / Next.js al recibir el request HTTP,
+        inyectando los datos del DB antes de enviar el HTML.
+        Aquí lo simulamos con contenido hardcoded = "pre-renderizado".
+      -->
+      <div id="ssr-block">
+        <div class="session-item">
+          <div>
+            <div class="session-name">CHEF_MARIO</div>
+            <div class="session-meta">CODE: KX9P2A</div>
+          </div>
+          <span class="session-players open">2/4 OPEN</span>
+        </div>
+        <div class="session-item">
+          <div>
+            <div class="session-name">PEPPER_ACE</div>
+            <div class="session-meta">CODE: RZ7QWE</div>
+          </div>
+          <span class="session-players full">4/4 FULL</span>
+        </div>
+        <div class="session-item">
+          <div>
+            <div class="session-name">BEAN_QUEEN</div>
+            <div class="session-meta">CODE: HY3KBV</div>
+          </div>
+          <span class="session-players open">1/4 OPEN</span>
+        </div>
+        <!-- Timestamp que el servidor añadiría -->
+        <span class="render-time ssr">⬛ RENDERED: BUILD TIME (STATIC)</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── CSR CARD ── -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title csr">CSR</span>
+      <span class="badge csr">◆ CLIENT-SIDE</span>
+    </div>
+    <div class="card-body">
+
+      <div class="explain-box">
+        <p>
+          <strong>JavaScript genera el HTML en el browser</strong> después de cargar.
+          El servidor solo envía un HTML "vacío" con
+          el bundle JS. El cliente hace fetch() y construye la UI.
+          Usado por: <strong>React SPA, Vue SPA, Angular...</strong>
+        </p>
+      </div>
+
+      <ul class="fact-list">
+        <li class="pro">Interactividad rica sin recargar página</li>
+        <li class="pro">Actualizaciones en tiempo real (polling/websocket)</li>
+        <li class="pro">Servidor solo sirve archivos estáticos</li>
+        <li class="pro">Ideal para apps tipo dashboard o juego</li>
+        <li class="con">FCP lento — el browser descarga JS antes de renderizar</li>
+        <li class="con">SEO limitado sin SSR híbrido</li>
+        <li class="con">Sin JS = página en blanco</li>
+        <li class="neu">Bundle JS puede crecer si no se optimiza</li>
+      </ul>
+
+      <div class="demo-label">DEMO INTERACTIVO — CSR REAL</div>
+
+      <!--
+        CSR DEMO:
+        Este bloque empieza VACÍO. JavaScript (abajo) hace
+        un fetch simulado y construye el HTML dinámicamente.
+        Observa el skeleton de carga mientras espera datos.
+        En producción: fetch('https://api.madbeans.com/sessions')
+      -->
+      <div id="csr-block">
+        <!-- El contenido lo inyecta JS -->
+        <div class="csr-skeleton" id="csr-skeleton">
+          <div class="sk-line"></div>
+          <div class="sk-line"></div>
+          <div class="sk-line"></div>
+        </div>
+      </div>
+
+      <button onclick="reloadCSR()" style="
+        font-family:var(--px);font-size:0.28rem;letter-spacing:2px;
+        background:var(--magenta);color:#000;border:none;
+        padding:10px 16px;cursor:pointer;margin-top:14px;
+        box-shadow:3px 3px 0 #000;
+      ">⟳ RE-FETCH DATA</button>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ METRICS TABLE ══ -->
+<div class="metrics-section">
+  <div class="section-title">◆ PERFORMANCE COMPARISON</div>
+  <table class="metrics-table">
+    <thead>
+      <tr>
+        <th>METRIC</th>
+        <th>SSR</th>
+        <th>CSR</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>First Contentful Paint</td>
+        <td class="win-cell">⬛ FAST (~0.8s)</td>
+        <td>◆ SLOW (~2.5s)</td>
+      </tr>
+      <tr>
+        <td>Time To Interactive</td>
+        <td>⬛ MEDIUM (~1.5s)</td>
+        <td class="win-cell">◆ FAST (~1.0s after load)</td>
+      </tr>
+      <tr>
+        <td>SEO</td>
+        <td class="win-cell">⬛ EXCELLENT</td>
+        <td>◆ LIMITED</td>
+      </tr>
+      <tr>
+        <td>Offline Support (PWA)</td>
+        <td>⬛ PARTIAL</td>
+        <td class="win-cell">◆ EXCELLENT (App Shell)</td>
+      </tr>
+      <tr>
+        <td>Server Load</td>
+        <td>⬛ HIGH per request</td>
+        <td class="win-cell">◆ LOW (static files)</td>
+      </tr>
+      <tr>
+        <td>Dynamic Updates</td>
+        <td>⬛ Page refresh needed</td>
+        <td class="win-cell">◆ Real-time, no reload</td>
+      </tr>
+      <tr>
+        <td>Caching (Service Worker)</td>
+        <td class="win-cell">⬛ HTML cacheable</td>
+        <td class="win-cell">◆ App Shell + API cache</td>
+      </tr>
+      <tr>
+        <td>Mad Beans Use Case</td>
+        <td>⬛ Landing / Marketing</td>
+        <td class="win-cell">◆ Game Sessions (elegido)</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══ LIGHTHOUSE ══ -->
+<div class="lighthouse-section">
+  <div class="section-title">⚡ LIGHTHOUSE SCORES — MAD BEANS PWA</div>
+  <div class="lh-grid">
+    <div class="lh-card">
+      <div class="lh-score score-green" id="perf-score">0</div>
+      <div class="lh-bar-track">
+        <div class="lh-bar-fill score-green" id="perf-bar" style="width:0%;background:var(--green)"></div>
+      </div>
+      <div class="lh-label">PERFORMANCE<br>Target: 90+</div>
+    </div>
+    <div class="lh-card">
+      <div class="lh-score score-cyan" id="pwa-score">0</div>
+      <div class="lh-bar-track">
+        <div class="lh-bar-fill score-cyan" id="pwa-bar" style="width:0%;background:var(--cyan)"></div>
+      </div>
+      <div class="lh-label">PWA SCORE<br>Manifest + SW + HTTPS</div>
+    </div>
+    <div class="lh-card">
+      <div class="lh-score score-green" id="acc-score">0</div>
+      <div class="lh-bar-track">
+        <div class="lh-bar-fill score-green" id="acc-bar" style="width:0%;background:var(--green)"></div>
+      </div>
+      <div class="lh-label">ACCESSIBILITY<br>A11y checks</div>
+    </div>
+    <div class="lh-card">
+      <div class="lh-score score-amber" id="seo-score">0</div>
+      <div class="lh-bar-track">
+        <div class="lh-bar-fill score-amber" id="seo-bar" style="width:0%;background:var(--amber)"></div>
+      </div>
+      <div class="lh-label">SEO<br>Meta tags, structure</div>
+    </div>
+    <div class="lh-card">
+      <div class="lh-score score-green" id="bp-score">0</div>
+      <div class="lh-bar-track">
+        <div class="lh-bar-fill score-green" id="bp-bar" style="width:0%;background:var(--green)"></div>
+      </div>
+      <div class="lh-label">BEST PRACTICES<br>HTTPS, APIs, security</div>
+    </div>
+  </div>
+  <p style="font-size:0.28rem;color:var(--dim);letter-spacing:1px;text-align:center;margin-top:16px;line-height:3">
+    * Scores representativos de una PWA bien configurada.<br>
+    Corre Lighthouse en DevTools → Lighthouse para medir la tuya.
+  </p>
+</div>
+
+<!-- ══ HOW TO TEST ══ -->
+<div class="test-section">
+  <div class="section-title" style="color:var(--green);text-align:left;margin-bottom:32px">
+    ▸ CÓMO PROBAR OFFLINE + LIGHTHOUSE
+  </div>
+
+  <div class="test-step">
+    <span class="step-num">1</span>
+    <div class="step-content">
+      <div class="step-title">INSTALAR CON LIVE SERVER</div>
+      <div class="step-desc">
+        El SW necesita HTTPS o localhost. Usa VS Code Live Server,
+        <span class="code-inline">npx serve .</span> o similar.
+        Abre en Chrome → <span class="code-inline">http://localhost:PORT</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="test-step">
+    <span class="step-num">2</span>
+    <div class="step-content">
+      <div class="step-title">VERIFICAR SERVICE WORKER</div>
+      <div class="step-desc">
+        DevTools → Application → Service Workers.
+        Deberías ver <span class="code-inline">sw.js</span> como "Activated and running".
+        Revisa Cache Storage para ver los assets cacheados.
+      </div>
+    </div>
+  </div>
+
+  <div class="test-step">
+    <span class="step-num">3</span>
+    <div class="step-content">
+      <div class="step-title">PROBAR MODO OFFLINE</div>
+      <div class="step-desc">
+        DevTools → Network → selecciona <span class="code-inline">Offline</span> en el dropdown.
+        Recarga la página — debería cargarse desde caché.
+        Si no hay caché aún, verás <span class="code-inline">offline.html</span>.
+      </div>
+    </div>
+  </div>
+
+  <div class="test-step">
+    <span class="step-num">4</span>
+    <div class="step-content">
+      <div class="step-title">CORRER GOOGLE LIGHTHOUSE</div>
+      <div class="step-desc">
+        DevTools → Lighthouse → selecciona categorías (Performance, PWA, SEO, Accessibility) →
+        <span class="code-inline">Analyze page load</span>. Espera ~30s para el reporte.
+        Importante: usa modo incógnito para resultados limpios.
+      </div>
+    </div>
+  </div>
+
+  <div class="test-step">
+    <span class="step-num">5</span>
+    <div class="step-content">
+      <div class="step-title">INSTALAR COMO PWA</div>
+      <div class="step-desc">
+        Chrome mostrará el ícono de instalar en la barra de URL.
+        Click → Install → se abre como app nativa en una ventana separada,
+        sin UI del browser. En iOS: Safari → Compartir → Añadir a pantalla de inicio.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  CSR DEMO — fetch simulado con delay
+//  Representa cómo React/Vue cargarían datos reales
+// ══════════════════════════════════════════════
+
+const fakeSessions = [
+  { name: 'TACO_BOSS',  code: 'ZR5WQK', players: '3/4', open: true  },
+  { name: 'CHEF_SPICY', code: 'MM2NVB', players: '4/4', open: false },
+  { name: 'NOODLE_KID', code: 'PB8XEA', players: '1/4', open: true  },
+];
+
+function renderCSR(sessions) {
+  const block = document.getElementById('csr-block');
+  const ts    = new Date().toLocaleTimeString();
+  block.innerHTML = sessions.map(s => `
+    <div class="session-item">
+      <div>
+        <div class="session-name">${s.name}</div>
+        <div class="session-meta">CODE: ${s.code}</div>
+      </div>
+      <span class="session-players ${s.open ? 'open' : 'full'}">${s.players} ${s.open ? 'OPEN' : 'FULL'}</span>
+    </div>
+  `).join('') + `<span class="render-time csr">◆ RENDERED: JS @ ${ts}</span>`;
+}
+
+function loadCSR() {
+  const block = document.getElementById('csr-block');
+  // Muestra skeleton mientras "carga"
+  block.innerHTML = `
+    <div class="csr-skeleton">
+      <div class="sk-line"></div>
+      <div class="sk-line"></div>
+      <div class="sk-line"></div>
+    </div>`;
+
+  // Simula fetch con delay (1.2s = latencia de red)
+  // En producción: await fetch('https://api.madbeans.com/sessions')
+  setTimeout(() => {
+    // Shuffle para simular datos frescos
+    const shuffled = [...fakeSessions].sort(() => Math.random() - 0.5);
+    renderCSR(shuffled);
+  }, 1200);
+}
+
+function reloadCSR() { loadCSR(); }
+
+// Cargar al inicio
+loadCSR();
+
+// ══════════════════════════════════════════════
+//  LIGHTHOUSE SCORES — contador animado
+// ══════════════════════════════════════════════
+const scores = [
+  { id:'perf', value: 91, bar: 'perf-bar' },
+  { id:'pwa',  value: 100, bar: 'pwa-bar' },
+  { id:'acc',  value: 88,  bar: 'acc-bar' },
+  { id:'seo',  value: 75,  bar: 'seo-bar' },
+  { id:'bp',   value: 96,  bar: 'bp-bar'  },
+];
+
+// Animar contadores cuando entran en viewport
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    observer.unobserve(entry.target);
+
+    scores.forEach(({ id, value, bar }) => {
+      const el  = document.getElementById(`${id}-score`);
+      const barEl = document.getElementById(bar);
+      let current = 0;
+      const step = value / 60;
+
+      const timer = setInterval(() => {
+        current = Math.min(current + step, value);
+        el.textContent = Math.round(current);
+        barEl.style.width = (current) + '%';
+        if (current >= value) clearInterval(timer);
+      }, 16);
+    });
+  });
+}, { threshold: 0.3 });
+
+const lhSection = document.querySelector('.lh-grid');
+if (lhSection) observer.observe(lhSection);
+</script>
+
+</body>
+</html>
