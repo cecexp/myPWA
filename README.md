@@ -1,99 +1,132 @@
-# Mad Beans PWA — Documentación de Implementación
+## 🚀 How to Run
 
-## 📁 Estructura del Proyecto
+### Option 1 — Full SSR/CSR Server (recommended)
 
-```
-myPWA/
-├── index.html          ← App principal (pantalla de sesiones)
-├── splash.html         ← Splash screen animado con pixel art
-├── offline.html        ← Página fallback sin conexión
-├── ssr-demo.html       ← Demo interactivo CSR vs SSR + Lighthouse guide
-├── sw.js               ← Service Worker con 3 estrategias de caché
-├── manifest.json       ← Web App Manifest (PWA config)
-├── app.js              ← Lógica de registro del SW y datos dinámicos
-└── icons/
-    ├── icon-192.png    ← Ícono PWA (reemplazar con PNG real)
-    └── icon-512.png    ← Ícono PWA maskable (reemplazar con PNG real)
-```
-
----
-
-## ✅ Funcionalidades Implementadas
-
-### 1. Splash Screen (`splash.html`)
-- Pixel art de coffee bean hecho 100% en CSS (grid 10×10)
-- Barra de progreso animada con shimmer
-- Pasos de carga simulados con transición suave
-- Auto-redirige a `index.html` al terminar
-- Meta tags `<link rel="apple-touch-icon">` para iOS
-- `<link rel="apple-touch-startup-image">` por breakpoint
-
-### 2. Funcionalidad Offline (`sw.js`)
-Tres estrategias implementadas:
-
-| Estrategia | Recursos | Comportamiento |
-|---|---|---|
-| **Network First** | HTML | Intenta red → caché → offline.html |
-| **Cache First** | JS, CSS, fonts, imágenes | Caché → red → guarda → placeholder SVG |
-| **Stale-While-Revalidate** | Resto | Sirve caché, actualiza en background |
-
-El SW también incluye:
-- `install`: precachea el App Shell
-- `activate`: limpia caches viejos
-- Banner de "offline" en `index.html` via `navigator.onLine`
-- Badge de estado del SW en esquina inferior derecha
-
-### 3. CSR vs SSR (`ssr-demo.html`)
-- Tabla comparativa de métricas (FCP, TTI, SEO, offline...)
-- Demo SSR: contenido pre-renderizado visible sin JS
-- Demo CSR: bloque vacío que JS rellena con fetch simulado + skeleton loader
-- Scores animados de Lighthouse con IntersectionObserver
-- Guía paso a paso para probar offline y correr Lighthouse
-
-### 4. Testing
-- Instrucciones en `ssr-demo.html` sección "CÓMO PROBAR"
-- `offline.html` con auto-retry cuando vuelve la conexión
-- SW status badge visible en `index.html`
-
----
-
-## 🚀 Cómo correrlo
+Includes the `/ssr`, `/csr`, and `/api/sessions` routes in addition to serving all static files.
 
 ```bash
-# Opción 1: npx serve
+# From the project root
+node server.js
+```
+
+| URL | Description |
+|---|---|
+| `http://localhost:3001/` | Main app (redirects to splash) |
+| `http://localhost:3001/ssr` | SSR demo — HTML built on the server |
+| `http://localhost:3001/csr` | CSR demo — empty shell filled by JS |
+| `http://localhost:3001/api/sessions` | JSON API (used by the CSR page) |
+
+> **Note:** The Service Worker and offline functionality only work on `localhost` or HTTPS. Do not open via `file://`.
+
+---
+
+### Option 2 — Simple Static Server
+
+If you only want to test the PWA without the SSR/CSR demo:
+
+```bash
+# With npx serve
 npx serve . -p 3000
 
-# Opción 2: Python
+# With Python
 python3 -m http.server 3000
-
-# Opción 3: VS Code Live Server
-# Click derecho en index.html → Open with Live Server
 ```
 
-Abrir: `http://localhost:3000/splash.html`
+Open: `http://localhost:3000/splash.html`
 
 ---
 
-## 🔧 Producción — Iconos PNG
+### Option 3 — VS Code Live Server
 
-Los archivos en `/icons/` son SVG placeholder. Para producción:
+1. Install the **Live Server** extension in VS Code
+2. Right-click `index.html` → **Open with Live Server**
+3. Manually navigate to `splash.html` to see the splash screen
 
-```bash
-# Instalar generador de assets PWA
-npm install -g pwa-asset-generator
+---
 
-# Generar todos los tamaños + splash screens de Apple
-pwa-asset-generator logo.png ./icons \
-  --index index.html \
-  --manifest manifest.json
+### Install as PWA (Add to Home Screen)
+
+**Android / Chrome:**
+1. Open the app in Chrome
+2. Tap the `⋮` menu → **Add to Home Screen**
+3. Or wait for the automatic install banner
+
+**iOS / Safari:**
+1. Open the app in Safari
+2. Tap the share button `⬆`
+3. Select **Add to Home Screen**
+
+**Desktop / Chrome:**
+1. Look for the `⊕` icon in the address bar
+2. Click → **Install**
+
+---
+
+### Testing Offline Functionality
+
+1. Open the app in the browser (`localhost:3001` or `localhost:3000`)
+2. Wait for the Service Worker to register (green badge in the bottom-right corner)
+3. Open DevTools → **Application** → **Service Workers** → confirm it is active
+4. In DevTools → **Network** → enable **Offline**
+5. Reload the page — it should still work from cache
+6. Navigate to `offline.html` to see the fallback page
+
+---
+
+### Requirements
+
+- Node.js `v18+` (for `server.js`)
+- Modern browser with Service Worker support (Chrome, Edge, Firefox, Safari 16+)
+- HTTPS or `localhost` connection to activate the SW
+
+## 🧗 Challenges & Solutions
+
+### 1. Service Worker scope and caching conflicts
+**Challenge:** During development, old cached versions of the app kept loading even after making changes to `index.html` and `app.js`. The browser was serving stale files from the cache, making it impossible to see updates.
+
+**Solution:** Implemented a versioned cache key (`CACHE_NAME = 'mad-beans-v1'`) and added cleanup logic in the `activate` event of the SW to delete all caches that don't match the current version. This ensures that every time the SW updates, old caches are wiped automatically.
+
+```js
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    )
+  );
+});
 ```
 
 ---
 
-## ⚡ Lighthouse Tips
+### 2. Splash screen not triggering on iOS
+**Challenge:** The `manifest.json` splash screen worked on Android Chrome, but on Safari/iOS the splash screen was not appearing when the app was added to the home screen.
 
-Para score máximo:
-- Servir en HTTPS (o localhost)
-- Verificar que `manifest.json` tenga `start_url` accesible
-- Iconos PNG reales (no SVG)
-- Correr en modo incógnito
+**Solution:** iOS ignores the `manifest.json` splash screen spec and requires explicit `<link rel="apple-touch-startup-image">` tags with exact pixel dimensions per device breakpoint. Added these tags manually to `splash.html` and `index.html` using media queries targeting each iPhone screen size.
+
+---
+
+### 3. Understanding the real difference between CSR and SSR
+**Challenge:** At first, both CSR and SSR looked the same in the browser — the content appeared on screen either way. It was hard to demonstrate *why* they're different in a meaningful, visual way.
+
+**Solution:** Built `ssr-demo.html` with two side-by-side panels: the SSR panel pre-renders all data in the HTML itself (visible in View Source), while the CSR panel shows a skeleton loader first, then fetches data via JavaScript. This makes the timing difference tangible. Also added `server.js` with a `/ssr` route (Node.js builds the full HTML on the server) and a `/csr` route (sends an empty shell that `fetch()` populates), making the architectural difference concrete and testable.
+
+---
+
+### 4. PWA install prompt inconsistency across browsers
+**Challenge:** The "Add to Home Screen" prompt behaves differently in every browser. Chrome on Android fires the `beforeinstallprompt` event, but Firefox and Safari have their own flows (or none at all).
+
+**Solution:** Added a manual install button in `index.html` that listens for `beforeinstallprompt` and stores the event for later. If the browser doesn't support it (Safari), the button is hidden and replaced with a tooltip explaining the manual install steps for that browser.
+
+---
+
+### 5. Vercel deployment and service worker HTTPS requirement
+**Challenge:** Service workers only work on HTTPS or `localhost`. During development with a plain `file://` path, the SW failed to register entirely.
+
+**Solution:** Used `npx serve` locally (which serves over HTTP on localhost, which is whitelisted for SW) and deployed to Vercel for HTTPS in production. Added a check in `app.js` to only register the SW when the protocol is `https:` or the host is `localhost`, avoiding silent failures.
+
+```js
+if ('serviceWorker' in navigator &&
+    (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  navigator.serviceWorker.register('/sw.js');
+}
+```
